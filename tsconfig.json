@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+        "baseUrl": "./",
+        "paths": { 
+            "*": ["./types/*", "*" ]
+        },
+        "outDir": "build",
+        "target": "es5",
+        "lib": ["es2015", "dom"],
+        "moduleResolution": "node",
+        "noEmitOnError": true,
+        "noImplicitAny": true,
+        "noImplicitThis": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "sourceMap": true,
+        "strictNullChecks": true,
+        "typeRoots": ["./types", "./node_modules/@types"]
+    },
+    "include": [
+        "src/**/*.ts",
+        "types/**/*.d.ts"
+    ],
+    "compileOnSave": true
+}

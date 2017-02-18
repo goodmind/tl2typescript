@@ -1,0 +1,25 @@
+{
+  "name": "tl2typescript",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "start": "node build/index.js",
+    "lint": "tslint 'src/**/*.ts'",
+    "fix": "npm run lint -- --fix",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "tslint": "^4.4.2",
+    "tslint-config-standard": "^4.0.0",
+    "typescript": "^2.3.0-dev.20170217"
+  },
+  "dependencies": {
+    "@types/node": "^7.0.0",
+    "pascal-case": "^2.0.0"
+  }
+}
