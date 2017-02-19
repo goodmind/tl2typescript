@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "gen:types": "node build > build_types/types.d.ts",
+    "gen:methods": "node build methods > build_types/methods.d.ts",
+    "gen": "npm run gen:types && npm run gen:methods",
     "build": "tsc",
     "watch": "tsc -w",
     "start": "node build/index.js",
@@ -16,7 +19,7 @@
   "devDependencies": {
     "tslint": "^4.4.2",
     "tslint-config-standard": "^4.0.0",
-    "typescript": "^2.3.0-dev.20170217"
+    "typescript": "^2.3.0-dev.20170219"
   },
   "dependencies": {
     "@types/node": "^7.0.0",
