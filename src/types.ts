@@ -12,11 +12,11 @@ export function createTypeReference (name: string, args?: any[]): any {
   )
 }
 
-export const createPropertySignature = (name: string, type: any, optional?: boolean) => Object.assign(
+export const createPropertySignature = (name: any, type: any, optional?: boolean) => Object.assign(
   {},
   ts.createNode(ts.SyntaxKind.PropertySignature),
   {
-    name: ts.createIdentifier(name),
+    name: typeof name === 'string' ? ts.createIdentifier(name) : name,
     questionToken: optional && ts.createToken(ts.SyntaxKind.QuestionToken),
     type
   }
@@ -57,4 +57,16 @@ export const createExport = (node: any) => Object.assign(
 export const interfaceType = (name: string, args: any) => createInterfaceDeclaration(
   name,
   Object.keys(args).map(k => createPropertySignature(k, args[k]))
+)
+
+export const createImports = (names: string[], from: string) => ts.createImportDeclaration(
+  [],
+  [],
+  Object.assign(ts.createImportClause(
+    ts.createIdentifier(''),
+    ts.createNamedImports(names.map(name =>
+      ts.createImportSpecifier(undefined, ts.createIdentifier(name))
+    ))
+  ), { name: undefined }),
+  ts.createLiteral(from)
 )
