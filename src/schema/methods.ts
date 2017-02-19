@@ -1,5 +1,12 @@
-import { T, tap, identity, anyPass, nth, match, test, equals, always, cond, pipe, replace, reject, propEq, evolve, unapply, unnest, map, toPairs, prop, groupBy } from 'ramda'
+import {
+  T, tap, identity, anyPass, nth, values, uniq,
+  match, test, equals, always, cond, or,
+  pipe, replace, reject, propEq, evolve,
+  unapply, unnest, map, toPairs, prop, groupBy
+} from 'ramda'
 import { createTypeReference as ref } from '../types'
+import { buildImports } from './constructors'
+import * as ts from 'typescript'
 import * as t from '../types'
 
 const upperCaseFirst = require('upper-case-first')
@@ -10,12 +17,10 @@ const fixType = pipe(replace('.', '$'), upperCaseFirst)
 const arrify = unapply(unnest)
 const byType = groupBy(prop('type'))
 
+let importMappings: { [key: string]: string } = {}
 const typeMappings: { [key: string]: string } = {}
 const tapType = ({method: m}: any, _: any, types: any) => typeMappings[m] = types.length === 1 ? m : `TMtp${m}`
-const tapUnion = ([_, types]: [any, any]) => {
-  // typeMappings[key] = types.length === 1 ? pascal(key) : `TMtp${key}`
-  types.map(tapType)
-}
+const tapUnion = ([_, types]: [any, any]) => types.map(tapType)
 const buildMappings = tap(pipe(
   pipe(byType, toPairs),
   map(tapUnion)
@@ -41,7 +46,12 @@ let parseType: any = cond<string, any>([
   ],
   [
     pipe(match(typeResolver), prop('1'), test(/[A-Z].*/g)),
-    pipe(match(typeResolver), prop('1'), fixType, (x: string) => typeMappings[x] || `Unknown<${x}>`)
+    pipe(
+      match(typeResolver),
+      prop('1'),
+      fixType,
+      (x: string) => typeMappings[x] || importMappings[x] || 'any'
+    )
   ],
   [T, identity]
 ])
@@ -49,7 +59,7 @@ let parseType: any = cond<string, any>([
 const buildParam = (param: any) => t.createPropertySignature(
   param.name,
   ref(...arrify(parseType(param.type))),
-  test(flagResolver, param.type)
+  or(test(flagResolver, param.type), param.name === 'flags')
 )
 
 const buildType = ({method: m, params}: any) => t.createInterfaceDeclaration(m, map(buildParam, params))
@@ -72,4 +82,42 @@ const build = pipe<any, any, any, any, any, any, any>(
   unnest
 )
 
-export default build
+const buildReturnType = ({method: m, type}: any) => t.createPropertySignature(
+  ts.createLiteral(m),
+  ref(...arrify(parseType(type)))
+)
+const buildReturnTypes = pipe<any, any, any, any, any, any>(
+  prop('methods'),
+  pipe(byType, toPairs),
+  map(([_, types]: [any, any]) => map(buildReturnType, types)),
+  unnest,
+  params => t.createExport(t.createInterfaceDeclaration('ReturnTypes', params))
+)
+
+const buildParamsType = ({method: m}: any) => t.createPropertySignature(
+  ts.createLiteral(m),
+  ref(pascal(m))
+)
+const buildParamsTypes = pipe<any, any, any, any, any, any>(
+  prop('methods'),
+  pipe(byType, toPairs),
+  map(([_, types]: [any, any]) => map(buildParamsType, types)),
+  unnest,
+  params => t.createExport(t.createInterfaceDeclaration('ParamsTypes', params))
+)
+
+const buildWithImports = (schema: any) => {
+  importMappings = buildImports(schema)
+  const imports = t.createImports(uniq(values(importMappings)), './types')
+  const params = build(schema)
+  const paramsTypes = buildParamsTypes(schema)
+  const returnTypes = buildReturnTypes(schema)
+  return [
+    imports,
+    ...params,
+    ...paramsTypes,
+    ...returnTypes
+  ]
+}
+
+export default buildWithImports
