@@ -6,8 +6,7 @@ import build from './schema/constructors'
 
 const schema = require('../schema.json')
 const commonTypes =
-`import { A, B, C } from './types'
-export interface IMtpVector<T> {
+`export interface IMtpVector<T> {
   list: T[]
 }
 type double = number
