@@ -1,63 +1,32 @@
 import {
-  T, tap, identity, anyPass, nth,
-  match, test, equals, always, cond,
-  pipe, replace, reject, propEq, evolve,
-  unapply, unnest, map, toPairs, prop, groupBy
+  tap, test, pipe as P, reject,
+  propEq, evolve, unapply, apply,
+  unnest, map, toPairs, prop, groupBy
 } from 'ramda'
 import { createTypeReference as ref } from '../types'
+import parseType, { fixType, flagResolver } from './parseType'
 import * as ts from 'typescript'
 import * as t from '../types'
 
-const upperCaseFirst = require('upper-case-first')
 const pascal = require('pascal-case')
-const typeResolver = /^([\#!%\.\w\?]+)(<([%\.\w]+)>)?$/
-const flagResolver = /^flags\.(\d+)\?([%\.\w<>]+)$/
-const fixType = pipe(replace('.', '$'), upperCaseFirst)
 const arrify = unapply(unnest)
 const byType = groupBy(prop('type'))
 
 const typeMappings: { [key: string]: string } = {}
-const tapType = ({predicate: p}: any, _: any) => {
-  typeMappings[p] = p
-}
+const tapType = ({predicate: p}: any, _: any) => typeMappings[p] = p
 const tapUnion = ([key, types]: [any, any]) => {
   typeMappings[key] = `TMtp${key}`
   types.map(tapType)
 }
-const buildMappings = tap(pipe(
-  pipe(byType, toPairs),
+const buildMappings = tap(P(
+  P(byType, toPairs),
   map(tapUnion)
 ))
 
-let parseType: any = cond<string, any>([
-  [anyPass([
-    equals('#'),
-    equals('int')
-  ]), always('number')],
-  [
-    test(flagResolver),
-    pipe(
-      match(flagResolver),
-      nth(2),
-      a => parseType(a))],
-  [
-    pipe(match(typeResolver), propEq(1, 'Vector')),
-    pipe(
-      match(typeResolver),
-      prop('3'),
-      (T) => ['IMtpVector', [ref(parseType(T))]])
-  ],
-  [
-    pipe(match(typeResolver), prop('1'), test(/[A-Z].*/g)),
-    pipe(match(typeResolver), prop('1'), fixType, (x: string) => typeMappings[x] || `Unknown<${x}>`)
-  ],
-  [T, identity]
-])
-
-const buildParam = (param: any) => t.createPropertySignature(
-  param.name,
-  ref(...arrify(parseType(param.type))),
-  test(flagResolver, param.type)
+const buildParam = ({type, name}: any) => t.createPropertySignature(
+  name,
+  apply(ref, arrify(parseType(type, typeMappings))),
+  test(flagResolver, type)
 )
 
 const buildType = ({predicate: p, params}: any) => t.createInterfaceDeclaration(
@@ -75,11 +44,11 @@ const buildUnion = ([key, types]: [any, any]) => map(t.createExport, [
   ...map(buildType, types),
   t.createTypeAliasDeclaration(
     `TMtp${key}`,
-    t.createUnionType(map(pipe(prop('predicate'), ref), types))
+    t.createUnionType(map(P(prop('predicate'), ref), types))
   )
 ])
 
-const prebuild = pipe(
+const prebuild = P(
   reject(propEq('predicate', 'vector')),
   map(evolve({
     predicate: pascal,
@@ -87,16 +56,16 @@ const prebuild = pipe(
   }))
 )
 
-const build = pipe<any, any, any, any, any, any, any>(
+const build = P<any, any, any, any, any, any, any>(
   prop('constructors'),
   prebuild,
   buildMappings,
-  pipe(byType, toPairs),
+  P(byType, toPairs),
   map(buildUnion),
   unnest
 )
 
-export const buildImports = pipe<any, any, any, any, any>(
+export const buildImports = P<any, any, any, any, any>(
   prop('constructors'),
   prebuild,
   buildMappings,
