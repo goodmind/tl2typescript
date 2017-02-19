@@ -1,4 +1,9 @@
-import { T, tap, identity, anyPass, nth, match, test, equals, always, cond, pipe, replace, reject, propEq, evolve, unapply, unnest, map, toPairs, prop, groupBy } from 'ramda'
+import {
+  T, tap, identity, anyPass, nth,
+  match, test, equals, always, cond,
+  pipe, replace, reject, propEq, evolve,
+  unapply, unnest, map, toPairs, prop, groupBy
+} from 'ramda'
 import { createTypeReference as ref } from '../types'
 import * as ts from 'typescript'
 import * as t from '../types'
@@ -12,9 +17,11 @@ const arrify = unapply(unnest)
 const byType = groupBy(prop('type'))
 
 const typeMappings: { [key: string]: string } = {}
-const tapType = ({predicate: p}: any, _: any, types: any) => typeMappings[p] = types.length === 1 ? p : `TMtp${p}`
+const tapType = ({predicate: p}: any, _: any) => {
+  typeMappings[p] = p
+}
 const tapUnion = ([key, types]: [any, any]) => {
-  typeMappings[key] = types.length === 1 ? pascal(key) : `TMtp${key}`
+  typeMappings[key] = `TMtp${key}`
   types.map(tapType)
 }
 const buildMappings = tap(pipe(
@@ -66,7 +73,7 @@ const buildType = ({predicate: p, params}: any) => t.createInterfaceDeclaration(
 
 const buildUnion = ([key, types]: [any, any]) => map(t.createExport, [
   ...map(buildType, types),
-  types.length > 1 && t.createTypeAliasDeclaration(
+  t.createTypeAliasDeclaration(
     `TMtp${key}`,
     t.createUnionType(map(pipe(prop('predicate'), ref), types))
   )
@@ -87,6 +94,13 @@ const build = pipe<any, any, any, any, any, any, any>(
   pipe(byType, toPairs),
   map(buildUnion),
   unnest
+)
+
+export const buildImports = pipe<any, any, any, any, any>(
+  prop('constructors'),
+  prebuild,
+  buildMappings,
+  () => typeMappings
 )
 
 export default build
